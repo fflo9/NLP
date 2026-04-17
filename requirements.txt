@@ -1,0 +1,3 @@
+datasets==2.18.0
+gcsfs==2024.2.0
+pandas
