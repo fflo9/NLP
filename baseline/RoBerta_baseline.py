@@ -173,87 +173,88 @@ def save_results(file_path, data, pred_array, tokenized_data, label_list):
 
     print('File saved successfully')
 
-#load train and dev data
-train_data = read_file(r'baseline/en_ewt-ud-train.iob2')
-dev_data = read_file(r'baseline/en_ewt-ud-dev.iob2')
-test_data = read_file(r'baseline/en_ewt-ud-test.iob2')
+if __name__ == "__main__":
+    #load train and dev data
+    train_data = read_file(r'baseline/en_ewt-ud-train.iob2')
+    dev_data = read_file(r'baseline/en_ewt-ud-dev.iob2')
+    test_data = read_file(r'baseline/en_ewt-ud-test.iob2')
 
-id2label = {
-    0: "O",
-    1: "B-LOC",
-    2: "I-LOC",
-    3: "B-PER",
-    4: "I-PER",
-    5: "B-ORG",
-    6: "I-ORG",
-}
-label2id = {
-    "O": 0,
-    "B-LOC": 1,
-    "I-LOC": 2,
-    "B-PER": 3,
-    "I-PER": 4,
-    "B-ORG": 5,
-    "I-ORG": 6,
-}
+    id2label = {
+        0: "O",
+        1: "B-LOC",
+        2: "I-LOC",
+        3: "B-PER",
+        4: "I-PER",
+        5: "B-ORG",
+        6: "I-ORG",
+    }
+    label2id = {
+        "O": 0,
+        "B-LOC": 1,
+        "I-LOC": 2,
+        "B-PER": 3,
+        "I-PER": 4,
+        "B-ORG": 5,
+        "I-ORG": 6,
+    }
 
-#set the tokenizer 
-tokenizer = RobertaTokenizerFast.from_pretrained('FacebookAI/roberta-base', add_prefix_space = True)
+    #set the tokenizer 
+    tokenizer = RobertaTokenizerFast.from_pretrained('FacebookAI/roberta-base', add_prefix_space = True)
 
-#automatic padding, and converts data to tensors
-data_collator = DataCollatorForTokenClassification(tokenizer)
+    #automatic padding, and converts data to tensors
+    data_collator = DataCollatorForTokenClassification(tokenizer)
 
-#initialize model
-model = RobertaForTokenClassification.from_pretrained(
-   'FacebookAI/roberta-base', num_labels=7, id2label=id2label, label2id=label2id
-)
+    #initialize model
+    model = RobertaForTokenClassification.from_pretrained(
+    'FacebookAI/roberta-base', num_labels=7, id2label=id2label, label2id=label2id
+    )
 
-#initialize training arguements
-training_args = TrainingArguments(
-    output_dir='./roberta-ner-results',
-    remove_unused_columns=False,
-    eval_strategy='epoch',
-    learning_rate=2e-5,
-    per_device_train_batch_size=16,
-    per_device_eval_batch_size=16,
-    num_train_epochs=5,
-    save_strategy='epoch',
-    gradient_accumulation_steps=2,
-    load_best_model_at_end=True,
-    metric_for_best_model='eval_loss',
-    weight_decay=0.01,
-)
+    #initialize training arguements
+    training_args = TrainingArguments(
+        output_dir='./roberta-ner-results',
+        remove_unused_columns=False,
+        eval_strategy='epoch',
+        learning_rate=2e-5,
+        per_device_train_batch_size=16,
+        per_device_eval_batch_size=16,
+        num_train_epochs=5,
+        save_strategy='epoch',
+        gradient_accumulation_steps=2,
+        load_best_model_at_end=True,
+        metric_for_best_model='eval_loss',
+        weight_decay=0.01,
+    )
 
-#tokenize all splits
-datasetDict = dictionize(train_data, dev_data, test_data, label2id)
-tokenizedData = datasetDict.map(
-    lambda examples: tokenize_and_align_labels(tokenizer, examples), 
-    batched=True
-)
+    #tokenize all splits
+    datasetDict = dictionize(train_data, dev_data, test_data, label2id)
+    tokenizedData = datasetDict.map(
+        lambda examples: tokenize_and_align_labels(tokenizer, examples), 
+        batched=True
+    )
 
-#remove raw columns for all splits
-train_final = tokenizedData['train'].remove_columns(['tokens', 'ner_tags'])
-dev_final = tokenizedData['dev'].remove_columns(['tokens', 'ner_tags'])
-test_final = tokenizedData['test'].remove_columns(['tokens', 'ner_tags'])
+    #remove raw columns for all splits
+    train_final = tokenizedData['train'].remove_columns(['tokens', 'ner_tags'])
+    dev_final = tokenizedData['dev'].remove_columns(['tokens', 'ner_tags'])
+    test_final = tokenizedData['test'].remove_columns(['tokens', 'ner_tags'])
 
-#set trainer and start training
-trainer = WeightedTrainer(
-    model=model,
-    args=training_args,
-    train_dataset=train_final,
-    eval_dataset=dev_final,
-    data_collator=data_collator,
-)
+    #set trainer and start training
+    trainer = WeightedTrainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_final,
+        eval_dataset=dev_final,
+        data_collator=data_collator,
+    )
 
-trainer.train()
+    trainer.train()
 
-#the IOB tags
-label_list = ['O', 'B-LOC', 'I-LOC', 'B-PER', 'I-PER', 'B-ORG', 'I-ORG']
+    #the IOB tags
+    label_list = ['O', 'B-LOC', 'I-LOC', 'B-PER', 'I-PER', 'B-ORG', 'I-ORG']
 
-#predictions and classification report
-pred_array, labels = predictions(trainer, test_final, label_list)
-class_report = compute_metrics(pred_array, labels, label_list)
-print(class_report)
+    #predictions and classification report
+    pred_array, labels = predictions(trainer, test_final, label_list)
+    class_report = compute_metrics(pred_array, labels, label_list)
+    print(class_report)
 
-#save results
-#save_results('test_predictions', test_data, pred_array, tokenizedData['test'], label_list)
+    #save results
+    save_results('test_predictions', test_data, pred_array, tokenizedData['test'], label_list)
