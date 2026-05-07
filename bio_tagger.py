@@ -6,7 +6,7 @@ This module implements BIO (Begin-Inside-Outside) tagging for entity recognition
 BIO tagging is a word-level annotation scheme that encodes entity boundaries through 
 prefix annotations. Each token receives a label combining:
 - Position indicator (B = Begin, I = Inside, O = Outside)
-- Entity type (PERSON, LOCATION, MEDICAL_TERM)
+- Entity type (PERSON, LOCATION, ...)
 """
 
 import pandas as pd
@@ -39,10 +39,10 @@ class BIOTagger:
         "T091": "ORGANIZATION",
         
         # Sympthom
-        "T033": "SYMPTHOM",
-        "T017": "SYMPTHOM",
-        "T022": "SYMPTHOM",
-        "T031": "SYMPTHOM",
+        "T033": "SYMPTOM",
+        "T017": "SYMPTOM",
+        "T022": "SYMPTOM",
+        "T031": "SYMPTOM",
 
         # History
         "T037": "HISTORY",
@@ -73,8 +73,8 @@ class BIOTagger:
         "I-LOCATION", 
         "B-ORGANIZATION",  
         "I-ORGANIZATION",
-        "B-SYMPTHOM",
-        "I-SYMPTHOM",
+        "B-SYMPTOM",
+        "I-SYMPTOM",
         "B-HISTORY",
         "I-HISTORY",
         "B-ACTION",
@@ -132,7 +132,7 @@ class BIOTagger:
             entity_type_code (str): The UMLS entity type code (e.g., "T098")
             
         Returns:
-            str: One of {"PERSON", "LOCATION", "MEDICAL_TERM"} or None if not mapped
+            str: One of {"PERSON", "LOCATION", ...} or None if not mapped
             
         Example:
             >>> get_entity_type("T098")
@@ -409,8 +409,8 @@ class BIOTagger:
             'I-LOCATION': 0,
             'B-ORGANIZATION': 0,
             'I-ORGANIZATION': 0,
-            'B-SYMPTHOM': 0,
-            'I-SYMPTHOM': 0,
+            'B-SYMPTOM': 0,
+            'I-SYMPTOM': 0,
             'B-HISTORY': 0,
             'I-HISTORY': 0,
             'B-ACTION': 0,
