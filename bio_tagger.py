@@ -28,40 +28,59 @@ class BIOTagger:
     # Define entity type mappings - map original labels to our target entities
     ENTITY_TYPE_MAPPING = {
         # Persons
-        "T098": "PERSON",  # Human
-        "T097": "PERSON",  # Healthcare professional
+        "T098": "PERSON",
+        "T097": "PERSON",
         
         # Locations
-        "T082": "LOCATION",  # Spatial concept
+        "T082": "LOCATION",
         
-        # Medical terms - comprehensive medical and biological concepts
-        "T103": "MEDICAL_TERM",  # Chemical substance
-        "T038": "MEDICAL_TERM",  # Biological process
-        "T017": "MEDICAL_TERM",  # Anatomical structure
-        "T031": "MEDICAL_TERM",  # Body substance
-        "T033": "MEDICAL_TERM",  # Finding (symptom, sign)
-        "T037": "MEDICAL_TERM",  # Injury or poisoning
-        "T007": "MEDICAL_TERM",  # Bacterium
-        "T058": "MEDICAL_TERM",  # Health care activity
-        "T062": "MEDICAL_TERM",  # Research activity
-        "T092": "MEDICAL_TERM",  # Organization (medical facility)
-        "T168": "MEDICAL_TERM",  # Substance (non-chemical)
-        "T204": "MEDICAL_TERM",  # Organism
-        "T170": "MEDICAL_TERM",  # Intellectual product
-        "T201": "MEDICAL_TERM",  # Clinical attribute
-        "T074": "MEDICAL_TERM",  # Medical device
-        "T005": "MEDICAL_TERM",  # Virus
+        # Organizations
+        "T092": "ORGANIZATION",
+        "T091": "ORGANIZATION",
+        
+        # Sympthom
+        "T033": "SYMPTHOM",
+        "T017": "SYMPTHOM",
+        "T022": "SYMPTHOM",
+        "T031": "SYMPTHOM",
+
+        # History
+        "T037": "HISTORY",
+        "T201": "HISTORY",
+        "T038": "HISTORY",
+        "T005": "HISTORY",
+        "T007": "HISTORY",
+        "T103": "HISTORY",
+
+        # Actions
+        "T058": "ACTION",
+        "T062": "ACTION",
+        "T074": "ACTION",
+
+        # Others
+        "T204": "OTHER",
+        "T170": "OTHER",
+        "T168": "OTHER"
+
     }
     
     # Valid BIO labels that can be assigned
     VALID_LABELS = {
-        "O",  # Outside - not part of any entity
-        "B-PERSON",      # Begin person entity
-        "I-PERSON",      # Inside person entity
-        "B-LOCATION",    # Begin location entity
-        "I-LOCATION",    # Inside location entity
-        "B-MEDICAL_TERM", # Begin medical term entity
-        "I-MEDICAL_TERM"  # Inside medical term entity
+        "O",               # Outside - not part of any entity
+        "B-PERSON",        # Begin person entity
+        "I-PERSON",        # Inside person entity
+        "B-LOCATION",
+        "I-LOCATION", 
+        "B-ORGANIZATION",  
+        "I-ORGANIZATION",
+        "B-SYMPTHOM",
+        "I-SYMPTHOM",
+        "B-HISTORY",
+        "I-HISTORY",
+        "B-ACTION",
+        "I-ACTION",
+        "B-OTHER",
+        "I-OTHER"
     }
     
     def __init__(self):
@@ -294,19 +313,17 @@ class BIOTagger:
         # Step 4: Assign BIO labels to each token
         bio_labels = self.assign_bio_labels(tokens_with_positions, entities)
         
-        # Extract tokens and positions separately
+        # Extract tokens
         tokens = [token_text for _, _, token_text in tokens_with_positions]
-        positions = [(start, end) for start, end in 
-                    [(s, e) for s, e, _ in tokens_with_positions]]
         
         return {
             'document_id': row.get('id', 'unknown'),
             'text': document_text,
             'tokens': tokens,
-            'bio_tags': bio_labels,
-            'token_positions': positions
+            'bio_tags': bio_labels
         }
     
+
     def process_csv(self, csv_path: str) -> Tuple[List[Dict], pd.DataFrame]:
         """
         Process entire CSV file and generate BIO-tagged sequences.
@@ -340,8 +357,36 @@ class BIOTagger:
         return processed_data, df
     
 
-
+    def save_bio_format(self, processed_data: List[Dict], output_path: str):
+        """
+        Save processed data in IOB2 format (standard format for NER datasets).
+        
+        The IOB2 format is a widely used standard for NER datasets:
+        - Each line represents one token
+        - Format: TOKEN\tBIO_TAG
+        - Sentences are separated by blank lines
+        - Document comments start with #
+        
+        Args:
+            processed_data (List[Dict]): Processed documents with BIO tags
+            output_path (str): Path to save the IOB2 format file
+        """
+        with open(output_path, 'w', encoding='utf-8') as f:
+            for doc_idx, doc in enumerate(processed_data):
+                # Write document header
+                f.write(f"# doc_id = {doc['document_id']}\n")
+                f.write(f"# text = {doc['text'][:100]}...\n")
+                
+                # Write tokens with BIO tags
+                for token, bio_tag in zip(doc['tokens'], doc['bio_tags']):
+                    f.write(f"{token}\t{bio_tag}\n")
+                
+                # Blank line between documents
+                f.write("\n")
+        
+        print(f"Saved IOB2 format to: {output_path}")
     
+
     def generate_statistics(self, processed_data: List[Dict]) -> Dict:
         """
         Generate statistics about the BIO-tagged dataset.
@@ -362,8 +407,16 @@ class BIOTagger:
             'I-PERSON': 0,
             'B-LOCATION': 0,
             'I-LOCATION': 0,
-            'B-MEDICAL_TERM': 0,
-            'I-MEDICAL_TERM': 0
+            'B-ORGANIZATION': 0,
+            'I-ORGANIZATION': 0,
+            'B-SYMPTHOM': 0,
+            'I-SYMPTHOM': 0,
+            'B-HISTORY': 0,
+            'I-HISTORY': 0,
+            'B-ACTION': 0,
+            'I-ACTION': 0,
+            'B-OTHER': 0,
+            'I-OTHER': 0
         }
         
         total_tokens = 0
@@ -420,50 +473,61 @@ class BIOTagger:
 
 def main():
     """
-    Main function demonstrating the BIO tagging pipeline.
+    Main function to process all datasets and save as IOB2 format.
     """
     # Initialize the BIO tagger
     tagger = BIOTagger()
     
     print("="*80)
-    print("BIO TAGGING DEMONSTRATION")
+    print("BIO TAGGING - IOB2 FORMAT GENERATION")
     print("="*80)
-    print("\nProcessing training data sample...\n")
-    
-    # Process only the train set as a demonstration
+ 
+
+    # Set up paths
     data_dir = Path("data")
-    input_file = data_dir / "train.csv"
+    output_dir = Path("data_iob2")
+    output_dir.mkdir(exist_ok=True)
     
-    if not input_file.exists():
-        print(f"Error: {input_file} not found")
-        return
+    print(f"\nOutput directory: {output_dir}\n")
     
-    print(f"Loading data from: {input_file}\n")
+    # Process each dataset
+    for split_name in ["train", "validation", "test"]:
+        input_file = data_dir / f"{split_name}.csv"
+        
+        if not input_file.exists():
+            print(f"Skipping {split_name} - file not found")
+            continue
+        
+        print(f"Processing {split_name.upper()} set...")
+        print(f"Input: {input_file}")
+        
+        # Process the CSV
+        processed_data, df = tagger.process_csv(str(input_file))
+        
+        # Generate statistics
+        stats = tagger.generate_statistics(processed_data)
+        
+        print(f"  Total documents: {stats['total_documents']}")
+        print(f"  Total tokens: {stats['total_tokens']}")
+        print(f"  Label Distribution:")
+        for label, percentage in stats['percentages'].items():
+            count = stats['token_counts'][label]
+            print(f"    {label:<20}: {count:>6} tokens ({percentage:>6.2f}%)")
+        
+        # Save in IOB2 format
+        output_file = output_dir / f"{split_name}.iob2"
+        tagger.save_bio_format(processed_data, str(output_file))
+        
+        # Print sample from first document
+        if processed_data:
+            print(f"\nSample from first document:")
+            tagger.print_sample(processed_data, 0)
+        
+        print()
     
-    # Process the CSV
-    processed_data, df = tagger.process_csv(str(input_file))
-    
-    # Generate statistics
-    stats = tagger.generate_statistics(processed_data)
-    
-    print(f"\nDataset Statistics:")
-    print(f"  Total documents: {stats['total_documents']}")
-    print(f"  Total tokens: {stats['total_tokens']}")
-    print(f"\n  Label Distribution:")
-    for label, percentage in stats['percentages'].items():
-        count = stats['token_counts'][label]
-        print(f"    {label:<20}: {count:>6} tokens ({percentage:>6.2f}%)")
-    
-    # Print samples to show how tagging works
-    print(f"\n{'='*80}")
-    print("SAMPLE DOCUMENTS WITH BIO TAGS")
     print("="*80)
-    
-    for i in range(min(3, len(processed_data))):
-        tagger.print_sample(processed_data, i)
-    
-    print(f"\n{'='*80}")
-    print("BIO TAGGING DEMONSTRATION COMPLETE")
+    print("BIO TAGGING COMPLETE")
+    print(f"All .iob2 files saved to: {output_dir}")
     print("="*80)
 
 
