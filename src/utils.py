@@ -1,6 +1,6 @@
 import numpy as np
-from seqeval.metrics import classification_report
-from seqeval.metrics import f1_score, precision_score, recall_score
+import os
+from seqeval.metrics import classification_report, f1_score, precision_score, recall_score
 from datasets import Dataset, DatasetDict
 
 def read_file(path):
@@ -36,6 +36,13 @@ def read_file(path):
           data.append((current_words, current_tags))
 
      return data
+
+def validate_file(path):
+     if not os.path.exists(path):
+          raise FileNotFoundError(f'File not found: {path}')
+     
+     if os.path.getsize(path) == 0:
+          raise ValueError(f'File is empty: {path}')
 
 def dictionize(train_data, dev_data, test_data, label2id):
     train_dict = {
