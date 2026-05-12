@@ -5,5 +5,7 @@ from .utils import (
     tokenize_and_align_labels, 
     compute_metrics, 
     compute_metrics_model,
-    predictions
+    predictions,
+    fix_bio,
+    validate_bio
 )
