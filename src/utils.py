@@ -43,6 +43,67 @@ def validate_file(path):
      
      if os.path.getsize(path) == 0:
           raise ValueError(f'File is empty: {path}')
+     
+def validate_bio(data):
+    errors = []
+
+    for sent_idx, (words, tags) in enumerate(data):
+        prev_tag = "O"
+
+        for tok_idx, tag in enumerate(tags):
+            if tag == "O":
+                prev_tag = tag
+                continue
+
+            prefix, entity = tag.split("-", 1)
+
+            #invalid I-tag at sentence start
+            if prefix == "I":
+
+                if prev_tag == "O":
+                    errors.append(
+                        (sent_idx, tok_idx, words[tok_idx], tag,
+                         "I-tag after O")
+                    )
+
+                elif prev_tag != "O":
+                    prev_prefix, prev_entity = prev_tag.split("-", 1)
+
+                    if prev_entity != entity:
+                        errors.append(
+                            (sent_idx, tok_idx, words[tok_idx], tag,
+                             "I-tag following different entity")
+                        )
+
+            prev_tag = tag
+
+    return errors
+
+def fix_bio(tags):
+    fixed = []
+    prev = "O"
+
+    for tag in tags:
+        if tag == "O":
+            fixed.append(tag)
+            prev = tag
+            continue
+
+        prefix, entity = tag.split("-", 1)
+
+        if prefix == "I":
+            if prev == "O":
+                tag = f"B-{entity}"
+
+            else:
+                prev_prefix, prev_entity = prev.split("-", 1)
+                if prev_entity != entity:
+                    tag = f"B-{entity}"
+
+        fixed.append(tag)
+        prev = tag
+
+    return fixed
 
 def dictionize(train_data, dev_data, test_data, label2id):
     train_dict = {
