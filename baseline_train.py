@@ -80,7 +80,8 @@ def main():
 
      try:
           set_seed(52)
-          os.makedirs('results', exist_ok=True)
+          if not os.path.exists('results'):
+               os.makedirs('results')
 
           #data paths
           train_path = r'data_iob2/train.iob2'
@@ -179,18 +180,18 @@ def main():
           trainer.train()
 
           #evaluation
-          print('Evaluating MedMentions Results!')
+          print('Evaluating!')
           pred_array, labels = predictions(trainer, dev_final)
           class_report_result = class_report(pred_array, labels, label_list)
-          print(f'MedMentions Dev Results:\n{class_report_result}')
+          print(f'MedMentions Dev Results:\n{pd.DataFrame(class_report_result).T}')
 
           pred_array_test, labels_test = predictions(trainer, test_final)
           class_report_result_test = class_report(pred_array_test, labels_test, label_list)
-          print(f'MedMentions Test Results:\n{class_report_result_test}')
+          df_test = pd.DataFrame(class_report_result_test).T
+          print(f'MedMentions Test Results:\n{df_test}')
 
           #save results
-          df_test = pd.DataFrame(class_report_result_test).T
-          df_test.to_csv('results/MM_test_results.csv')
+          df_test.to_csv('results/MM_test_results.csv', index=True)
 
           #load, dictionize and tokenize mts_data for final testing
           mts_dict = {
@@ -210,11 +211,11 @@ def main():
           print('Evaluating MTS-Dialog Results!')
           pred_array_mts, labels_mts = predictions(trainer, mts_tokenized)
           class_report_result_mts = class_report(pred_array_mts, labels_mts, label_list)
-          print(f'MTS-Dialog Results:\n{class_report_result_mts}')
+          df_mts = pd.DataFrame(class_report_result_mts).T
+          print(f'MTS-Dialog Test Results:\n{df_mts}')
 
           #save results
-          df_mts = pd.DataFrame(class_report_result_mts).T
-          df_mts.to_csv('results/MTS_test_results.csv')
+          df_mts.to_csv('results/MTS_test_results.csv', index=True)
 
      except FileNotFoundError as e:
           print(f"[FILE ERROR] {e}")

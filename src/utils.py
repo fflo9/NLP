@@ -189,7 +189,7 @@ def class_report(predictions, labels, label_list):
         for prediction, label in zip(predictions, labels)
     ]
 
-    return classification_report(true_labels, true_predictions)
+    return classification_report(true_labels, true_predictions, output_dict=True)
 
 def compute_metrics_model(p, label_list):
     predictions, labels = p
