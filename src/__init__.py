@@ -1,5 +1,5 @@
-from .model import BertCRFForNER, WeightedTrainer
-from .data_utils import (
+from .custom_model import BertCRFForNER, WeightedTrainer
+from .utils import (
     read_file, 
     dictionize, 
     tokenize_and_salign_labels, 
