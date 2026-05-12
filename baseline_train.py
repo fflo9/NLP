@@ -185,7 +185,7 @@ def main():
           print(f'MedMentions Dev Results:\n{class_report_result}')
 
           pred_array_test, labels_test = predictions(trainer, test_final)
-          class_report_result_test = class_report(pred_array_test, labels_test)
+          class_report_result_test = class_report(pred_array_test, labels_test, label_list)
           print(f'MedMentions Test Results:\n{class_report_result_test}')
 
           #save results
@@ -209,7 +209,7 @@ def main():
 
           print('Evaluating MTS-Dialog Results!')
           pred_array_mts, labels_mts = predictions(trainer, mts_tokenized)
-          class_report_result_mts = class_report(pred_array_mts, labels_mts)
+          class_report_result_mts = class_report(pred_array_mts, labels_mts, label_list)
           print(f'MTS-Dialog Results:\n{class_report_result_mts}')
 
           #save results
