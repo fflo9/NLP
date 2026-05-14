@@ -1,20 +1,19 @@
 import torch
-import random
 import os
-import io
-import numpy as np
-import pandas as pd
 from datasets import Dataset
-from src import (
+from src.utils import (
      validate_file,
      read_file, 
      dictionize, 
      tokenize_and_align_labels, 
      compute_metrics_model, 
-     predictions, 
+     get_predictions, 
      class_report,
      validate_bio,
-     fix_bio
+     fix_bio,
+     get_report_df,
+     label_config,
+     set_seed
 )
 
 from transformers import (
@@ -25,56 +24,8 @@ from transformers import (
      RobertaForTokenClassification
 )
 
-#reproducibility
-def set_seed(seed=52):
-     random.seed(seed)
-     np.random.seed(seed)
-     torch.manual_seed(seed)
-
-     if torch.cuda.is_available():
-          torch.cuda.manual_seed_all(seed)
-
-     torch.backends.cudnn.deterministic = True
-     torch.backends.cudnn.benchmark = False
-
 #label config
-id2label = {
-    0: 'O',
-    1: 'B-PERSON',
-    2: 'I-PERSON',
-    3: 'B-LOCATION',
-    4: 'I-LOCATION',
-    5: 'B-ORGANIZATION',
-    6: 'I-ORGANIZATION',
-    7: 'B-SYMPTOM',
-    8: 'I-SYMPTOM',
-    9: 'B-HISTORY',
-    10: 'I-HISTORY',
-    11: 'B-ACTION',
-    12: 'I-ACTION',
-    13: 'B-OTHER',
-    14: 'I-OTHER'
-}
-
-label2id = {
-    'O': 0,
-    'B-PERSON': 1,
-    'I-PERSON': 2,
-    'B-LOCATION': 3,
-    'I-LOCATION': 4,
-    'B-ORGANIZATION': 5,
-    'I-ORGANIZATION': 6,
-    'B-SYMPTOM': 7,
-    'I-SYMPTOM': 8,
-    'B-HISTORY': 9,
-    'I-HISTORY': 10,
-    'B-ACTION': 11,
-    'I-ACTION': 12,
-    'B-OTHER': 13,
-    'I-OTHER': 14
-}
-
-label_list = list(label2id.keys())
+id2label, label2id, label_list = label_config()
 
 #main training pipeline
 def main():
@@ -149,7 +100,7 @@ def main():
           #initialize training arguements
           print('Initializing training arguments!')
           training_args = TrainingArguments(
-               seed=42,
+               seed=52,
                output_dir='results/roberta-ner-results',
                warmup_steps=100,
                remove_unused_columns=False,
@@ -182,23 +133,14 @@ def main():
 
           #evaluation
           print('Evaluating!')
-          pred_array, labels = predictions(trainer, dev_final)
+          pred_array, labels = get_predictions(trainer, dev_final)
           class_report_result = class_report(pred_array, labels, label_list)
 
-          #DEBUG
-          def get_report_df(report):
-               # Check if it's a dictionary
-               if isinstance(report, dict):
-                    return pd.DataFrame.from_dict(report, orient='index')
-               # If it's a string (like your debug showed), parse it
-               else:
-                    # Use regex separator to catch the multiple spaces between columns
-                    return pd.read_csv(io.StringIO(report), sep=r'\s{2,}', engine='python')
-               
+          
           df_dev = get_report_df(class_report_result)
           print(f'MedMentions Dev Results:\n{df_dev}')
 
-          pred_array_test, labels_test = predictions(trainer, test_final)
+          pred_array_test, labels_test = get_predictions(trainer, test_final)
           class_report_result_test = class_report(pred_array_test, labels_test, label_list)
           df_test = get_report_df(class_report_result_test)
           print(f'MedMentions Test Results:\n{df_test}')
@@ -223,7 +165,7 @@ def main():
           mts_tokenized = mts_tokenized.remove_columns(['tokens', 'ner_tags']) #mts_final
 
           print('Evaluating MTS-Dialog Results!')
-          pred_array_mts, labels_mts = predictions(trainer, mts_tokenized)
+          pred_array_mts, labels_mts = get_predictions(trainer, mts_tokenized)
           class_report_result_mts = class_report(pred_array_mts, labels_mts, label_list)
           df_mts = get_report_df(class_report_result_mts)
           

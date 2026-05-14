@@ -1,7 +1,12 @@
 import numpy as np
 import os
+import re
 from seqeval.metrics import classification_report, f1_score, precision_score, recall_score
 from datasets import Dataset, DatasetDict
+import io
+import pandas as pd
+import random
+import torch
 
 def read_file(path):
 
@@ -36,6 +41,69 @@ def read_file(path):
           data.append((current_words, current_tags))
 
      return data
+
+def label_config():
+    id2label = {
+        0: 'O',
+        1: 'B-PERSON',
+        2: 'I-PERSON',
+        3: 'B-LOCATION',
+        4: 'I-LOCATION',
+        5: 'B-ORGANIZATION',
+        6: 'I-ORGANIZATION',
+        7: 'B-SYMPTOM',
+        8: 'I-SYMPTOM',
+        9: 'B-HISTORY',
+        10: 'I-HISTORY',
+        11: 'B-ACTION',
+        12: 'I-ACTION',
+        13: 'B-OTHER',
+        14: 'I-OTHER'
+    }
+
+    label2id = {
+        'O': 0,
+        'B-PERSON': 1,
+        'I-PERSON': 2,
+        'B-LOCATION': 3,
+        'I-LOCATION': 4,
+        'B-ORGANIZATION': 5,
+        'I-ORGANIZATION': 6,
+        'B-SYMPTOM': 7,
+        'I-SYMPTOM': 8,
+        'B-HISTORY': 9,
+        'I-HISTORY': 10,
+        'B-ACTION': 11,
+        'I-ACTION': 12,
+        'B-OTHER': 13,
+        'I-OTHER': 14
+    }
+
+    label_list = list(label2id.keys())
+
+    return id2label, label2id, label_list
+
+#reproducibility
+def set_seed(seed=52):
+     random.seed(seed)
+     np.random.seed(seed)
+     torch.manual_seed(seed)
+
+     if torch.cuda.is_available():
+          torch.cuda.manual_seed_all(seed)
+
+     torch.backends.cudnn.deterministic = True
+     torch.backends.cudnn.benchmark = False
+
+def get_report_df(report):
+    # Check if it's a dictionary
+    if isinstance(report, dict):
+        return pd.DataFrame.from_dict(report, orient='index')
+    # If it's a string, parse it
+    else:
+        # Use regex separator to catch the multiple spaces between columns
+        return pd.read_csv(io.StringIO(report), sep=r'\s{2,}', engine='python')
+    
 
 def validate_file(path):
      if not os.path.exists(path):
@@ -172,10 +240,16 @@ def tokenize_and_align_labels(tokenizer, examples):
     tokenized_inputs['labels'] = labels
     return tokenized_inputs
 
-def predictions(trainer, data):
+def get_predictions(trainer, data): 
     output = trainer.predict(data)
     labels = output.label_ids
-    preds = np.argmax(output.predictions, axis=2)
+    
+    #check if predictions are a tuple (common with CRF models)
+    if isinstance(output.predictions, tuple):
+        preds = output.predictions[0]
+    else:
+        preds = np.argmax(output.predictions, axis=2)
+        
     return preds, labels
 
 def class_report(predictions, labels, label_list):
